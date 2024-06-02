@@ -1,13 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import IncomingCall from "./IncomingCall";
-import OutgoingCall from "./OutgoingCall";
+import IncomingCallScreen from "./IncomingCall";
+import OutgoingCallScreen from "./OutgoingCall";
+import OngoingCallScreen from "./OngoingCallScreen";
 
 function Room() {
   return (
     <div>
-      <IncomingCall />
-      <OutgoingCall />
+      <IncomingCallScreen />
+      <OutgoingCallScreen />
+      <OngoingCallScreen />
     </div>
   );
 }

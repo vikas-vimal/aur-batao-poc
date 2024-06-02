@@ -1,6 +1,6 @@
 import useSocket from "../hooks/useSocket";
 
-function IncomingCall() {
+function IncomingCallScreen() {
   const { callIncoming } = useSocket();
   if (!callIncoming) return null;
 
@@ -14,4 +14,4 @@ function IncomingCall() {
   );
 }
 
-export default IncomingCall;
+export default IncomingCallScreen;

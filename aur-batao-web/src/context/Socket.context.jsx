@@ -9,6 +9,8 @@ export const SocketContext = createContext({
   setCallIncoming: () => {},
   callOutgoing: null,
   setCallOutgoing: () => {},
+  callOngoing: null,
+  setCallOngoing: () => {},
 });
 
 // eslint-disable-next-line react/prop-types
@@ -18,6 +20,7 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
   const [callIncoming, setCallIncoming] = useState(null);
   const [callOutgoing, setCallOutgoing] = useState(null);
+  const [callOngoing, setCallOngoing] = useState(null);
 
   useEffect(() => {
     socketInstance.on("connect", () => {
@@ -65,6 +68,8 @@ export const SocketProvider = ({ children }) => {
         setCallIncoming,
         callOutgoing,
         setCallOutgoing,
+        callOngoing,
+        setCallOngoing,
       }}
     >
       {children}

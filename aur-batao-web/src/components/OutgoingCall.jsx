@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import useSocket from "../hooks/useSocket";
 import { useAuth } from "../hooks/useAuth";
 
-function OutgoingCall() {
+function OutgoingCallScreen() {
   const { socket, callOutgoing, setCallOutgoing } = useSocket();
   const auth = useAuth();
 
@@ -24,4 +24,4 @@ function OutgoingCall() {
   );
 }
 
-export default OutgoingCall;
+export default OutgoingCallScreen;
