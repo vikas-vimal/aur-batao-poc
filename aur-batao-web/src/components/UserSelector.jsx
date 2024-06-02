@@ -1,20 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 
-function UserSelector() {
+// eslint-disable-next-line react/prop-types
+function UserSelector({ usersList = [] }) {
   const auth = useAuth();
-  const [usersList, setUsersList] = useState([]);
-
-  const fetchUsersList = useCallback(async () => {
-    const response = await fetch("http://localhost:6080/users-list");
-    const data = await response.json();
-    console.log("users list", data);
-    setUsersList(data);
-  }, []);
-
-  useEffect(() => {
-    fetchUsersList();
-  }, [fetchUsersList]);
 
   return (
     <div>

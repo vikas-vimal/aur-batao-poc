@@ -1,21 +1,7 @@
-import { useEffect, useState } from "react";
 import useSocket from "../hooks/useSocket";
 
 function IncomingCall() {
-  const { socket } = useSocket();
-  const [callIncoming, setCallIncoming] = useState(false);
-
-  useEffect(() => {
-    socket.on("CALL:INCOMING", (data) => {
-      console.log("CALL:INCOMING", data);
-      setCallIncoming(data);
-    });
-
-    return () => {
-      socket.off("CALL:INCOMING");
-    };
-  }, [socket]);
-
+  const { callIncoming } = useSocket();
   if (!callIncoming) return null;
 
   return (

@@ -1,25 +1,26 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { useSocket } from "./hooks/useSocket";
-import { useAuth } from "./hooks/useAuth";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import CallContacts from "./components/CallContacts";
 import UserSelector from "./components/UserSelector";
-import IncomingCall from "./components/IncomingCall";
+import { useAuth } from "./hooks/useAuth";
+import { useSocket } from "./hooks/useSocket";
 
 function App() {
   const auth = useAuth();
   const { socket, connected } = useSocket();
   const socketStatus = useMemo(() => connected, [connected]);
 
-  const handleConnectForm = useCallback(
-    (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      const targetUserId = formData.get("targetUserId");
-      console.log(`---- ~ handleConnectForm ~ targetUserId:`, targetUserId);
-      socket.emit("USER:CALLING", { fromUserId: auth.user.id, targetUserId });
-    },
-    [auth.user.id, socket]
-  );
+  const [usersList, setUsersList] = useState([]);
+
+  const fetchUsersList = useCallback(async () => {
+    const response = await fetch("http://localhost:6080/users-list");
+    const data = await response.json();
+    console.log("users list", data);
+    setUsersList(data);
+  }, []);
+
+  useEffect(() => {
+    fetchUsersList();
+  }, [fetchUsersList]);
 
   useEffect(() => {
     socket.on("USER:JOINED", (data) => {
@@ -33,19 +34,10 @@ function App() {
   return (
     <div style={{ textAlign: "center" }}>
       <div>Socket status: {socketStatus ? "Connected" : "Not Connected"}</div>
-      <UserSelector />
+      <UserSelector usersList={usersList} />
       <div>Current Profile: {auth.user.name}</div>
       <div>Available Credits: {auth.user.credits}</div>
-      <div>
-        <form onSubmit={handleConnectForm}>
-          <h4>Connect to user</h4>
-          <label>
-            User Id: <input type="text" name="targetUserId" required />
-          </label>
-          <button type="submit">Connect</button>
-        </form>
-      </div>
-      <IncomingCall />
+      <CallContacts usersList={usersList} />
     </div>
   );
 }

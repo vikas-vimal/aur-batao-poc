@@ -54,6 +54,24 @@ io.on("connection", (socket) => {
       io.to(targetSocketId).emit("CALL:INCOMING", room);
     }
   });
+
+  socket.on("CALL:END", (data) => {
+    console.log("Received call end event", data);
+    const targetUser = UsersDB.find((user) => user.id === data.targetUserId);
+    const sourceUser = UsersDB.find((user) => user.id === data.sourceUser.id);
+    console.log({ targetUser, sourceUser });
+    if (targetUser) {
+      const targetSocketId = userIdToSocketIdMap.get(targetUser.id);
+      console.log({ targetSocketId });
+      let room = getRoomByUserIds(sourceUser, targetUser);
+      io.to(targetSocketId).emit("CALL:ENDED", room);
+      if (room) {
+        socket.leave(room.id);
+        socket.leave(targetUser.id);
+        io.to(room.id).emit("CALL:ENDED", room);
+      }
+    }
+  });
 });
 
 server.listen(6080, () => {

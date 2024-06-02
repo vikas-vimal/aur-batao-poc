@@ -5,13 +5,19 @@ import { useAuth } from "../hooks/useAuth";
 export const SocketContext = createContext({
   socket: null,
   connected: false,
+  callIncoming: null,
+  setCallIncoming: () => {},
+  callOutgoing: null,
+  setCallOutgoing: () => {},
 });
 
 // eslint-disable-next-line react/prop-types
 export const SocketProvider = ({ children }) => {
+  const auth = useAuth();
   const socketInstance = useMemo(() => socketIO("http://localhost:6080"), []);
   const [connected, setConnected] = useState(false);
-  const auth = useAuth();
+  const [callIncoming, setCallIncoming] = useState(null);
+  const [callOutgoing, setCallOutgoing] = useState(null);
 
   useEffect(() => {
     socketInstance.on("connect", () => {
@@ -33,8 +39,34 @@ export const SocketProvider = ({ children }) => {
     socketInstance.emit("USER:ONLINE", { user: auth.user });
   }, [auth.user.id, auth.user, socketInstance]);
 
+  useEffect(() => {
+    socketInstance.on("CALL:INCOMING", (data) => {
+      console.log("CALL:INCOMING", data);
+      setCallIncoming(data);
+    });
+    socketInstance.on("CALL:ENDED", (data) => {
+      console.log("CALL:ENDED", data);
+      setCallIncoming(null);
+      setCallOutgoing(null);
+    });
+
+    return () => {
+      socketInstance.off("CALL:INCOMING");
+      socketInstance.off("CALL:ENDED");
+    };
+  }, [socketInstance]);
+
   return (
-    <SocketContext.Provider value={{ socket: socketInstance, connected }}>
+    <SocketContext.Provider
+      value={{
+        socket: socketInstance,
+        connected,
+        callIncoming,
+        setCallIncoming,
+        callOutgoing,
+        setCallOutgoing,
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );
