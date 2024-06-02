@@ -3,16 +3,18 @@ import { useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
 import useSocket from "../hooks/useSocket";
 import Room from "./Room";
+import peer from "../lib/peer";
 
 function CallContacts({ usersList = [] }) {
   const auth = useAuth();
   const { socket, callOutgoing, setCallOutgoing } = useSocket();
 
   const handleMakeCall = useCallback(
-    (user) => {
+    async (user) => {
       const targetUserId = user.id;
       console.log(`---- ~ handleConnectForm ~ targetUserId:`, targetUserId);
-      socket.emit("USER:CALLING", { fromUserId: auth.user.id, targetUserId });
+      const offer = await peer.getOffer();
+      socket.emit("USER:CALLING", { fromUserId: auth.user.id, targetUserId, offer });
       setCallOutgoing(user);
     },
     [auth.user.id, setCallOutgoing, socket]

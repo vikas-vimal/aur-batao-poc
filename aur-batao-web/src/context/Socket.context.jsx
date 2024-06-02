@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import { io as socketIO } from "socket.io-client";
 import { useAuth } from "../hooks/useAuth";
 
@@ -22,42 +22,41 @@ export const SocketProvider = ({ children }) => {
   const [callOutgoing, setCallOutgoing] = useState(null);
   const [callOngoing, setCallOngoing] = useState(null);
 
+  const callEndedHandler = useCallback((data) => {
+    console.log("CALL:ENDED", data);
+    setCallIncoming(null);
+    setCallOutgoing(null);
+  }, []);
+
   useEffect(() => {
     socketInstance.on("connect", () => {
-      console.log("socket connected...");
+      console.log("socket connected...", socketInstance.id);
       setConnected(true);
       socketInstance.emit("USER:ONLINE", { user: auth.user });
     });
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, [auth.user.id, auth.user, socketInstance, socketInstance.connected]);
+
+  useEffect(() => {
     socketInstance.on("disconnect", () => {
       console.log("socket disconnected...");
       setConnected(false);
     });
-
-    // return () => {
-    //   socketInstance.disconnect();
-    // };
-  }, [auth.user.id, auth.user, socketInstance, socketInstance.connected]);
+  }, [socketInstance]);
 
   useEffect(() => {
     socketInstance.emit("USER:ONLINE", { user: auth.user });
   }, [auth.user.id, auth.user, socketInstance]);
 
   useEffect(() => {
-    socketInstance.on("CALL:INCOMING", (data) => {
-      console.log("CALL:INCOMING", data);
-      setCallIncoming(data);
-    });
-    socketInstance.on("CALL:ENDED", (data) => {
-      console.log("CALL:ENDED", data);
-      setCallIncoming(null);
-      setCallOutgoing(null);
-    });
+    socketInstance.on("CALL:ENDED", callEndedHandler);
 
     return () => {
-      socketInstance.off("CALL:INCOMING");
-      socketInstance.off("CALL:ENDED");
+      socketInstance.off("CALL:ENDED", callEndedHandler);
     };
-  }, [socketInstance]);
+  }, [callEndedHandler, socketInstance]);
 
   return (
     <SocketContext.Provider

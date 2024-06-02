@@ -22,14 +22,16 @@ function App() {
     fetchUsersList();
   }, [fetchUsersList]);
 
+  const handleUserJoined = useCallback((data) => {
+    console.log("USER JOINED ROOM", data);
+  }, []);
+
   useEffect(() => {
-    socket.on("USER:JOINED", (data) => {
-      console.log("USER JOINED ROOM", data);
-    });
+    socket.on("USER:JOINED", handleUserJoined);
     return () => {
-      socket.off("USER:JOINED");
+      socket.off("USER:JOINED", handleUserJoined);
     };
-  }, [socket]);
+  }, [handleUserJoined, socket]);
 
   return (
     <div style={{ textAlign: "center" }}>

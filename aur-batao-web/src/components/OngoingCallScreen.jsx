@@ -1,12 +1,25 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import useSocket from "../hooks/useSocket";
 
 function OngoingCallScreen() {
-  const { callOngoing, callOutgoing } = useSocket();
+  const { socket, callOngoing, callOutgoing } = useSocket();
   const timerRef = useRef(null);
   const localAudioRef = useRef(null);
 
   console.log({ callOngoing });
+
+  const handleCallAccepted = useCallback((data) => {
+    console.log("Call accepted by target user", data);
+  }, []);
+
+  useEffect(() => {
+    // {roomId,fromUser,targetUser,offer,answer,createdAt,status,}
+    socket.on("CALL:ACCEPTED_BY_TARGET", handleCallAccepted);
+
+    return () => {
+      socket.off("CALL:ACCEPTED_BY_TARGET", handleCallAccepted);
+    };
+  }, [handleCallAccepted, socket]);
 
   useEffect(() => {
     if (callOngoing || callOutgoing) {
@@ -30,12 +43,12 @@ function OngoingCallScreen() {
   if (!callOngoing && !callOutgoing) return null;
   return (
     <div>
-      <h3>Connected Call</h3>
+      {/* <h3>Connected Call</h3> */}
       <audio ref={localAudioRef} muted autoPlay />
 
       {/* <p>With: {callIncoming?.name}</p> */}
       {/* <button>Answer Call</button> */}
-      <button>End Call</button>
+      {/* <button>End Call</button> */}
     </div>
   );
 }
