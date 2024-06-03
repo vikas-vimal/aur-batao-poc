@@ -22,6 +22,17 @@ export const SocketProvider = ({ children }) => {
   const [callOutgoing, setCallOutgoing] = useState(null);
   const [callOngoing, setCallOngoing] = useState(null);
 
+  const connectedHandler = useCallback(() => {
+    console.log("socket connected...", socketInstance.id);
+    setConnected(true);
+    socketInstance.emit("USER:ONLINE", { user: auth.user });
+  }, [auth.user, socketInstance]);
+
+  const disconnectHandler = useCallback(() => {
+    console.log("socket disconnected...");
+    setConnected(false);
+  }, []);
+
   const callEndedHandler = useCallback((data) => {
     console.log("CALL:ENDED", data);
     setCallIncoming(null);
@@ -29,34 +40,34 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    socketInstance.on("connect", () => {
-      console.log("socket connected...", socketInstance.id);
-      setConnected(true);
-      socketInstance.emit("USER:ONLINE", { user: auth.user });
-    });
-    return () => {
-      socketInstance.disconnect();
-    };
-  }, [auth.user.id, auth.user, socketInstance, socketInstance.connected]);
-
-  useEffect(() => {
-    socketInstance.on("disconnect", () => {
-      console.log("socket disconnected...");
-      setConnected(false);
-    });
-  }, [socketInstance]);
-
-  useEffect(() => {
-    socketInstance.emit("USER:ONLINE", { user: auth.user });
-  }, [auth.user.id, auth.user, socketInstance]);
-
-  useEffect(() => {
+    socketInstance.on("connect", connectedHandler);
+    socketInstance.on("disconnect", disconnectHandler);
     socketInstance.on("CALL:ENDED", callEndedHandler);
-
     return () => {
+      socketInstance.off("connect", connectedHandler);
+      socketInstance.off("disconnect", disconnectHandler);
       socketInstance.off("CALL:ENDED", callEndedHandler);
     };
-  }, [callEndedHandler, socketInstance]);
+  }, [
+    auth.user.id,
+    auth.user,
+    socketInstance,
+    socketInstance.connected,
+    connectedHandler,
+    disconnectHandler,
+    callEndedHandler,
+  ]);
+
+  useEffect(() => {
+    if (connected) {
+      socketInstance.emit("USER:ONLINE", { user: auth.user });
+    }
+  }, [auth.user.id, auth.user, socketInstance, connected]);
+
+  useEffect(() => {
+    socketInstance.disconnect();
+    socketInstance.connect();
+  }, [auth.user.id, auth.user, socketInstance]);
 
   return (
     <SocketContext.Provider

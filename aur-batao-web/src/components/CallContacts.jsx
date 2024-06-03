@@ -12,9 +12,11 @@ function CallContacts({ usersList = [] }) {
   const handleMakeCall = useCallback(
     async (user) => {
       const targetUserId = user.id;
-      console.log(`---- ~ handleConnectForm ~ targetUserId:`, targetUserId);
+      console.log(`Calling from`, auth.user.id, "to", targetUserId);
       const offer = await peer.getOffer();
-      socket.emit("USER:CALLING", { fromUserId: auth.user.id, targetUserId, offer });
+      const payload = { fromUserId: auth.user.id, targetUserId, offer };
+      console.log("Calling with payload", payload);
+      socket.emit("USER:CALLING", payload);
       setCallOutgoing(user);
     },
     [auth.user.id, setCallOutgoing, socket]
