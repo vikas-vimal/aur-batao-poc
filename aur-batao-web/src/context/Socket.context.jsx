@@ -33,20 +33,31 @@ export const SocketProvider = ({ children }) => {
     setConnected(false);
   }, []);
 
-  const callEndedHandler = useCallback((data) => {
-    console.log("CALL:ENDED", data);
+  const callCancelledHandler = useCallback((data) => {
+    console.log("CALL:CANCELLED", data);
     setCallIncoming(null);
     setCallOutgoing(null);
   }, []);
 
+  const handleAccountUpdate = useCallback(
+    (data) => {
+      console.log("Received new details for account...", data);
+      console.log("Updating account details...");
+      auth.setUser(data);
+    },
+    [auth]
+  );
+
   useEffect(() => {
     socketInstance.on("connect", connectedHandler);
     socketInstance.on("disconnect", disconnectHandler);
-    socketInstance.on("CALL:ENDED", callEndedHandler);
+    socketInstance.on("CALL:CANCELLED", callCancelledHandler);
+    socketInstance.on("ACCOUNT:UPDATE_BALANCE", handleAccountUpdate);
     return () => {
       socketInstance.off("connect", connectedHandler);
       socketInstance.off("disconnect", disconnectHandler);
-      socketInstance.off("CALL:ENDED", callEndedHandler);
+      socketInstance.off("CALL:CANCELLED", callCancelledHandler);
+      socketInstance.off("ACCOUNT:UPDATE_BALANCE", handleAccountUpdate);
     };
   }, [
     auth.user.id,
@@ -55,7 +66,7 @@ export const SocketProvider = ({ children }) => {
     socketInstance.connected,
     connectedHandler,
     disconnectHandler,
-    callEndedHandler,
+    callCancelledHandler,
   ]);
 
   useEffect(() => {

@@ -2,16 +2,14 @@
 
 import { useCallback, useEffect } from "react";
 import useSocket from "../hooks/useSocket";
-import { useAuth } from "../hooks/useAuth";
 
 function OutgoingCallScreen() {
   const { socket, callOutgoing, setCallOutgoing } = useSocket();
-  const auth = useAuth();
 
   const handleEndCall = useCallback(() => {
-    socket.emit("CALL:END", { fromUser: auth.user, targetUserId: callOutgoing.id });
+    socket.emit("CALL:CANCEL", callOutgoing);
     setCallOutgoing(null);
-  }, [auth.user, setCallOutgoing, socket, callOutgoing]);
+  }, [setCallOutgoing, socket, callOutgoing]);
 
   const handleCallRejected = useCallback(
     (data) => {
@@ -28,7 +26,7 @@ function OutgoingCallScreen() {
     return () => {
       socket.off("CALL:REJECTED_BY_TARGET", handleCallRejected);
     };
-  }, [handleCallRejected, setCallOutgoing, socket]);
+  }, [handleCallRejected, socket]);
 
   if (!callOutgoing) return null;
 

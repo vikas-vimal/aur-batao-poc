@@ -35,6 +35,11 @@ function createRoom(fromUser, targetUser) {
   return payload;
 }
 
+function getRoomById(roomId) {
+  console.log("Getting room by id", roomId);
+  return rooms.get(roomId);
+}
+
 function deleteRoom(roomId) {
   console.log("Deleting room by id", roomId);
   rooms.delete(roomId);
@@ -47,4 +52,5 @@ module.exports = {
   generateRoomId,
   getRoomByUserIds,
   deleteRoom,
+  getRoomById,
 };

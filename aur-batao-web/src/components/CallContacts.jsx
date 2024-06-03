@@ -14,12 +14,17 @@ function CallContacts({ usersList = [] }) {
       const targetUserId = user.id;
       console.log(`Calling from`, auth.user.id, "to", targetUserId);
       const offer = await peer.getOffer();
-      const payload = { fromUserId: auth.user.id, targetUserId, offer };
+      const payload = {
+        fromUser: auth.user,
+        fromUserId: auth.user.id,
+        targetUserId,
+        offer,
+      };
       console.log("Calling with payload", payload);
+      setCallOutgoing(payload);
       socket.emit("USER:CALLING", payload);
-      setCallOutgoing(user);
     },
-    [auth.user.id, setCallOutgoing, socket]
+    [auth.user, setCallOutgoing, socket]
   );
 
   return (

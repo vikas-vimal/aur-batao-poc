@@ -3,7 +3,8 @@ const http = require("http");
 const { Server: SocketServer } = require("socket.io");
 const cors = require("cors");
 const { UsersDB } = require("./db");
-const { createRoom, getRoomByUserIds, deleteRoom } = require("./rooms");
+const { createRoom, getRoomByUserIds, deleteRoom, getRoomById } = require("./rooms");
+const { calcCallBill } = require("./billing");
 
 const app = express();
 const server = http.createServer(app);
@@ -24,7 +25,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/users-list", (req, res) => {
-  res.status(200).json(UsersDB);
+  res.status(200).json(Array.from(UsersDB.values()));
 });
 
 io.on("connection", (socket) => {
@@ -36,10 +37,10 @@ io.on("connection", (socket) => {
     console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
   });
 
-  socket.on("USER:CALLING", ({ fromUserId, targetUserId, offer }) => {
+  socket.on("USER:CALLING", ({ fromUser, fromUserId, targetUserId, offer }) => {
     console.log("Received incoming call", { fromUserId, targetUserId, offer });
-    const targetUser = UsersDB.find((user) => user.id === targetUserId);
-    const sourceUser = UsersDB.find((user) => user.id === fromUserId);
+    const targetUser = UsersDB.get(targetUserId);
+    const sourceUser = UsersDB.get(fromUserId);
     console.log({ targetUser, sourceUser });
     if (targetUser && sourceUser) {
       console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
@@ -84,11 +85,12 @@ io.on("connection", (socket) => {
       status: "ACCEPTED",
     });
     if (roomId) {
-      socket.to(roomId).emit("CALL:STARTED", { ...data, status: "ACCEPTED" });
+      socket.join(roomId);
+      io.to(roomId).emit("CALL:STARTED", { ...data, status: "STARTED" });
     }
   });
 
-  socket.on("CALL:REJECTED", (data) => {
+  socket.on("CALL:REJECT", (data) => {
     const { roomId, fromUser, targetUser, offer, createdAt, status } = data;
     console.log("Received call rejected by target user", {
       fromUser,
@@ -100,18 +102,21 @@ io.on("connection", (socket) => {
       ...data,
       status: "REJECTED",
     });
-    let room = getRoomByUserIds(fromUser, targetUser);
-    if (room) {
-      socket.to(room.roomId).emit("CALL:ENDED", { ...data, status: "REJECTED" });
+    if (roomId) {
+      socket.to(room.roomId).emit("CALL:REJECTED", { ...data, status: "REJECTED" });
       socket.leave(room.roomId);
       deleteRoom(room.roomId);
     }
   });
 
-  socket.on("CALL:END", (data) => {
-    console.log("Received call end event", data);
-    const targetUser = UsersDB.find((user) => user.id === data.targetUserId);
-    const sourceUser = UsersDB.find((user) => user.id === data.fromUser.id);
+  socket.on("CALL:CANCEL", (data) => {
+    console.log("Received call cancel event", data);
+    if (!data?.targetUserId || !data?.fromUser?.id) {
+      console.log("Invalid call object to end...");
+      return;
+    }
+    const targetUser = UsersDB.get(data.targetUserId);
+    const sourceUser = UsersDB.get(data.fromUser.id);
     console.log({ targetUser, sourceUser });
     if (targetUser && sourceUser) {
       console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
@@ -119,12 +124,56 @@ io.on("connection", (socket) => {
       console.log({ targetSocketId });
       let room = getRoomByUserIds(sourceUser, targetUser);
       if (room) {
-        console.log("Deleting room to end call", room);
-        socket.to(room.roomId).emit("CALL:ENDED", { ...data, status: "ENDED" });
+        io.to(targetSocketId).emit("CALL:CANCELLED", room);
+        socket.to(room.roomId).emit("CALL:CANCELLED", { ...data, status: "CANCELLED" });
         socket.leave(room.roomId);
         deleteRoom(room.roomId);
       }
-      io.to(targetSocketId).emit("CALL:ENDED", room);
+    } else {
+      console.log("target user or source user not found!");
+    }
+  });
+
+  socket.on("CALL:LEAVE_ROOM", (data) => {
+    console.log("Received leave call room event", data);
+    const { roomId, fromUser, targetUser, offer, createdAt, status } = data;
+    if (!roomId) {
+      console.log("Invalid leave room id provided...");
+      return;
+    }
+    let room = getRoomById(roomId);
+    console.log("Room data:", room);
+    console.log("Leaving room...");
+    socket.leave(roomId);
+    if (room) {
+      console.log("Calculating call bill...");
+      const user = UsersDB.get(fromUser.id);
+      const billAmt = calcCallBill(user, room);
+      user.credits -= billAmt;
+      UsersDB.set(fromUser.id, user);
+      console.log("Updated user details", user);
+      const callInitiatorSocketId = userIdToSocketIdMap.get(user.id);
+      io.to(callInitiatorSocketId).emit("ACCOUNT:UPDATE_BALANCE", user);
+      deleteRoom(roomId);
+    }
+  });
+
+  socket.on("CALL:END", (data) => {
+    console.log("Received call end event", data);
+    const { roomId, fromUser, targetUser, offer, createdAt, status } = data;
+    if (!targetUser?.id || !fromUser?.id) {
+      console.log("Invalid call object to end...");
+      return;
+    }
+    console.log({ targetUser, fromUser });
+    if (targetUser && fromUser) {
+      console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
+      let room = getRoomById(roomId);
+      console.log("Emitting leave room to end call", room);
+      socket
+        .to(room.roomId)
+        .emit("CALL:LEAVE_ROOM_REQUEST", { ...data, status: "ENDED" });
+      socket.emit("CALL:LEAVE_ROOM_REQUEST", { ...data, status: "ENDED" });
     } else {
       console.log("target user or source user not found!");
     }

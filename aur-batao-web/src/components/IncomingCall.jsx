@@ -3,7 +3,7 @@ import useSocket from "../hooks/useSocket";
 import peer from "../lib/peer";
 
 function IncomingCallScreen() {
-  const { socket, callIncoming, setCallIncoming } = useSocket();
+  const { socket, callIncoming, setCallIncoming, setCallOngoing } = useSocket();
   const [incomingOffer, setIncomingOffer] = useState(null);
 
   const handleCallAcceptAction = useCallback(async () => {
@@ -11,14 +11,17 @@ function IncomingCallScreen() {
       console.log("incoming call offer", incomingOffer);
       const answer = await peer.getAnswer(incomingOffer.offer);
       console.log(`---- ~ handleCallAcceptAction ~ answer:`, answer);
-      socket.emit("CALL:ACCEPTED", { ...incomingOffer, answer });
+      const payload = { ...incomingOffer, answer };
+      socket.emit("CALL:ACCEPTED", payload);
+      setCallOngoing(payload);
+      setCallIncoming(null);
     }
-  }, [incomingOffer, socket]);
+  }, [incomingOffer, setCallIncoming, setCallOngoing, socket]);
 
   const handleCallRejectAction = useCallback(() => {
     setCallIncoming(null);
     setIncomingOffer(null);
-    socket.emit("CALL:REJECTED", { ...incomingOffer });
+    socket.emit("CALL:REJECT", { ...incomingOffer });
   }, [incomingOffer, setCallIncoming, socket]);
 
   const handleIncomingCall = useCallback(
@@ -33,7 +36,6 @@ function IncomingCallScreen() {
 
   useEffect(() => {
     socket.on("CALL:INCOMING", handleIncomingCall);
-
     return () => {
       socket.off("CALL:INCOMING", handleIncomingCall);
     };
