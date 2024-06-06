@@ -16,6 +16,14 @@ function OngoingCallScreen() {
   } = useSocket();
   const localAudioRef = useRef(null);
   const [currentRoom, setCurrentRoom] = useState(null);
+  const [stream, setStream] = useState(null);
+
+  const handleStreamTransmit = useCallback(() => {
+    if (!stream) return;
+    for (const track of stream) {
+      peer.peer.addTrack(track);
+    }
+  }, [stream]);
 
   const handleCallAccepted = useCallback(async (data) => {
     console.log("Call accepted by target user", data);
@@ -29,8 +37,9 @@ function OngoingCallScreen() {
       setCallOngoing(data);
       setCallOutgoing(null);
       setCallIncoming(null);
+      handleStreamTransmit();
     },
-    [setCallIncoming, setCallOngoing, setCallOutgoing]
+    [handleStreamTransmit, setCallIncoming, setCallOngoing, setCallOutgoing]
   );
 
   const handleEndCall = useCallback(() => {
@@ -75,6 +84,7 @@ function OngoingCallScreen() {
           audio: true,
         })
         .then((stream) => {
+          setStream(stream);
           if (localAudioRef.current) {
             localAudioRef.current.srcObject = stream;
           }
@@ -84,13 +94,17 @@ function OngoingCallScreen() {
           console.log(err);
           alert("Unable to get device audio!");
         });
+    } else {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
     }
-  }, [callOngoing, callOutgoing]);
+  }, [callOngoing, callOutgoing, stream]);
 
   if (!callOngoing && !callOutgoing) return null;
   return (
     <div>
-      <audio ref={localAudioRef} muted autoPlay />
+      <audio src={stream} muted autoPlay />
       {callOngoing ? (
         <>
           <h3 style={{ marginBottom: 0 }}>Connected Call</h3>
