@@ -3,7 +3,12 @@ const http = require("http");
 const { Server: SocketServer } = require("socket.io");
 const cors = require("cors");
 const { UsersDB } = require("./db");
-const { createRoom, getRoomByUserIds, deleteRoom, getRoomById } = require("./rooms");
+const {
+  createRoom,
+  getRoomByUserIds,
+  deleteRoom,
+  getRoomById,
+} = require("./rooms");
 const { calcCallBill } = require("./billing");
 
 const app = express();
@@ -34,7 +39,10 @@ io.on("connection", (socket) => {
   socket.on("USER:ONLINE", ({ user }) => {
     console.log("online user", user);
     userIdToSocketIdMap.set(user.id, socket.id);
-    console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
+    console.log(
+      "uid to sid",
+      Object.fromEntries(userIdToSocketIdMap.entries())
+    );
   });
 
   socket.on("USER:CALLING", ({ fromUser, fromUserId, targetUserId, offer }) => {
@@ -43,7 +51,10 @@ io.on("connection", (socket) => {
     const sourceUser = UsersDB.get(fromUserId);
     console.log({ targetUser, sourceUser });
     if (targetUser && sourceUser) {
-      console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
+      console.log(
+        "uid to sid",
+        Object.fromEntries(userIdToSocketIdMap.entries())
+      );
       const targetSocketId = userIdToSocketIdMap.get(targetUser.id);
       const sourceSocketId = userIdToSocketIdMap.get(sourceUser.id);
       console.log({ targetSocketId, sourceSocketId });
@@ -62,14 +73,21 @@ io.on("connection", (socket) => {
   });
 
   socket.on("CALL:ACCEPTED", (data) => {
-    const { roomId, fromUser, targetUser, offer, answer, createdAt, status } = data;
+    const { roomId, fromUser, targetUser, offer, answer, createdAt, status } =
+      data;
     console.log("Received call accepted by target user", {
       fromUser,
       targetUser,
       answer,
     });
-    console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
-    console.log("reverting back to call initiator for call accepted event", fromUser);
+    console.log(
+      "uid to sid",
+      Object.fromEntries(userIdToSocketIdMap.entries())
+    );
+    console.log(
+      "reverting back to call initiator for call accepted event",
+      fromUser
+    );
     const callInitiatorSocketId = userIdToSocketIdMap.get(fromUser.id);
     const callReceiverSocketId = userIdToSocketIdMap.get(targetUser.id);
     console.log(
@@ -90,22 +108,84 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("CALL:NEGOTIATION", (data) => {
+    const { roomId, fromUser, targetUser, offer, toUserId, createdAt, status } =
+      data;
+    console.log("Received call negotiation with offer...", {
+      toUserId,
+      offer,
+    });
+    if (!toUserId || !offer) {
+      console.log(
+        "Error: Invalid user id or offer to send negotiations state..."
+      );
+      return;
+    }
+    const shareToSocketId = userIdToSocketIdMap.get(toUserId);
+    console.log("Sharing offer back to user", { toUserId, shareToSocketId });
+    io.to(shareToSocketId).emit("CALL:ACCEPT_NEGOTIATION", {
+      roomId,
+      fromUser,
+      targetUser,
+      offer,
+      createdAt,
+      status: "NEGOTIATION",
+    });
+  });
+
+  socket.on("CALL:NEGOTIATION_ANSWER", (data) => {
+    const {
+      roomId,
+      fromUser,
+      targetUser,
+      offer,
+      answer,
+      toUserId,
+      createdAt,
+      status,
+    } = data;
+    console.log("Received answer for negotiation...", {
+      toUserId,
+      answer,
+    });
+    if (!toUserId || !answer) {
+      console.log(
+        "Error: Invalid user id or answer to send negotiations state..."
+      );
+      return;
+    }
+    const shareToSocketId = userIdToSocketIdMap.get(toUserId);
+    console.log("Sharing answer back to user", { toUserId, shareToSocketId });
+    io.to(shareToSocketId).emit("CALL:FINISH_NEGOTIATION", {
+      roomId,
+      fromUser,
+      targetUser,
+      offer,
+      answer,
+      createdAt,
+      status: "FINISH_NEGOTIATION",
+    });
+  });
+
   socket.on("CALL:REJECT", (data) => {
     const { roomId, fromUser, targetUser, offer, createdAt, status } = data;
     console.log("Received call rejected by target user", {
       fromUser,
       targetUser,
     });
-    console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
+    console.log(
+      "uid to sid",
+      Object.fromEntries(userIdToSocketIdMap.entries())
+    );
     const revertToSocketId = userIdToSocketIdMap.get(fromUser.id);
     io.to(revertToSocketId).emit("CALL:REJECTED_BY_TARGET", {
       ...data,
       status: "REJECTED",
     });
     if (roomId) {
-      socket.to(room.roomId).emit("CALL:REJECTED", { ...data, status: "REJECTED" });
-      socket.leave(room.roomId);
-      deleteRoom(room.roomId);
+      socket.to(roomId).emit("CALL:REJECTED", { ...data, status: "REJECTED" });
+      socket.leave(roomId);
+      deleteRoom(roomId);
     }
   });
 
@@ -119,13 +199,18 @@ io.on("connection", (socket) => {
     const sourceUser = UsersDB.get(data.fromUser.id);
     console.log({ targetUser, sourceUser });
     if (targetUser && sourceUser) {
-      console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
+      console.log(
+        "uid to sid",
+        Object.fromEntries(userIdToSocketIdMap.entries())
+      );
       const targetSocketId = userIdToSocketIdMap.get(targetUser.id);
       console.log({ targetSocketId });
       let room = getRoomByUserIds(sourceUser, targetUser);
       if (room) {
         io.to(targetSocketId).emit("CALL:CANCELLED", room);
-        socket.to(room.roomId).emit("CALL:CANCELLED", { ...data, status: "CANCELLED" });
+        socket
+          .to(room.roomId)
+          .emit("CALL:CANCELLED", { ...data, status: "CANCELLED" });
         socket.leave(room.roomId);
         deleteRoom(room.roomId);
       }
@@ -167,7 +252,10 @@ io.on("connection", (socket) => {
     }
     console.log({ targetUser, fromUser });
     if (targetUser && fromUser) {
-      console.log("uid to sid", Object.fromEntries(userIdToSocketIdMap.entries()));
+      console.log(
+        "uid to sid",
+        Object.fromEntries(userIdToSocketIdMap.entries())
+      );
       let room = getRoomById(roomId);
       console.log("Emitting leave room to end call", room);
       socket
