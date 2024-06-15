@@ -3,6 +3,7 @@ import CallContacts from "./components/CallContacts";
 import UserSelector from "./components/UserSelector";
 import { useAuth } from "./hooks/useAuth";
 import { useSocket } from "./hooks/useSocket";
+import { API_URL } from "../env";
 
 function App() {
   const auth = useAuth();
@@ -12,7 +13,7 @@ function App() {
   const [usersList, setUsersList] = useState([]);
 
   const fetchUsersList = useCallback(async () => {
-    const response = await fetch("http://localhost:6080/users-list");
+    const response = await fetch(`${API_URL}/users-list`);
     const data = await response.json();
     console.log("users list", data);
     setUsersList(data);

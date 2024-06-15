@@ -1,6 +1,13 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { io as socketIO } from "socket.io-client";
 import { useAuth } from "../hooks/useAuth";
+import { API_URL } from "../../env";
 
 export const SocketContext = createContext({
   socket: null,
@@ -16,7 +23,7 @@ export const SocketContext = createContext({
 // eslint-disable-next-line react/prop-types
 export const SocketProvider = ({ children }) => {
   const auth = useAuth();
-  const socketInstance = useMemo(() => socketIO("http://localhost:6080"), []);
+  const socketInstance = useMemo(() => socketIO(API_URL), []);
   const [connected, setConnected] = useState(false);
   const [callIncoming, setCallIncoming] = useState(null);
   const [callOutgoing, setCallOutgoing] = useState(null);
