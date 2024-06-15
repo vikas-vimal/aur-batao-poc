@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactPlayer from "react-player";
+import { useAuth } from "../hooks/useAuth";
 import useSocket from "../hooks/useSocket";
 import peer from "../lib/peer";
-import { useAuth } from "../hooks/useAuth";
 import CallTimerComponent from "./CallTimer";
 
 function OngoingCallScreen() {
@@ -14,42 +15,52 @@ function OngoingCallScreen() {
     setCallOutgoing,
     setCallIncoming,
   } = useSocket();
-  const localAudioRef = useRef(null);
   const [currentRoom, setCurrentRoom] = useState(null);
-  const [stream, setStream] = useState(null);
+  const stream = useRef(null);
   const [remoteStreams, setRemoteStreams] = useState(null);
 
-  const remoteUserId = useMemo(() => {
-    if (!currentRoom) return null;
-    return currentRoom.fromUser?.id === auth.user.id
-      ? currentRoom.fromUser.id
-      : currentRoom.targetUser.id;
-  }, [auth.user.id, currentRoom]);
+  const computeRemoteUserId = useCallback(() => {
+    console.log("Computing remote user id....");
+    const fromUser = currentRoom?.fromUser?.id;
+    const targetUser = currentRoom?.targetUser?.id;
+    const remoteUserId = fromUser === auth.user.id ? targetUser : fromUser;
+    console.log({ fromUser, targetUser, remoteUserId });
+    return remoteUserId;
+  }, [auth.user.id, currentRoom?.fromUser?.id, currentRoom?.targetUser?.id]);
+
+  const startAudioStream = useCallback(async () => {
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      stream.current = audioStream;
+      return audioStream;
+    } catch (error) {
+      console.log(error);
+      alert("Unable to get device audio!");
+      return null;
+    }
+  }, []);
+
+  const stopAudioStream = useCallback(() => {
+    if (stream.current) {
+      stream.current.getTracks().forEach((track) => track.stop());
+      stream.current = null;
+    }
+  }, []);
 
   const handleStreamTransmit = useCallback(async () => {
     try {
-      if (!stream) {
-        const st = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        console.log("Accessed stream...");
-        setStream(st);
-        for (const track of st.getTracks()) {
-          peer.peer.addTrack(track, st);
-        }
-        if (localAudioRef.current) {
-          localAudioRef.current.srcObject = st;
-        }
-      } else {
-        for (const track of stream.getTracks()) {
-          peer.peer.addTrack(track, stream);
+      const audioStream = await startAudioStream();
+      if (audioStream) {
+        for (const track of audioStream.getTracks()) {
+          peer.peer.addTrack(track, audioStream);
         }
       }
     } catch (error) {
       console.log(`----- ~ handleStreamTransmit ~ error:`, error);
-      alert("Unable to get device audio!");
     }
-  }, [stream]);
+  }, [startAudioStream]);
 
   const handleCallAccepted = useCallback(async (data) => {
     console.log("Call accepted by target user", data);
@@ -101,6 +112,7 @@ function OngoingCallScreen() {
   const handleNegotiationNeeded = useCallback(async () => {
     console.log("Received negotiation request");
     const offer = await peer.getOffer();
+    const remoteUserId = computeRemoteUserId();
     const payload = {
       ...currentRoom,
       offer,
@@ -108,26 +120,24 @@ function OngoingCallScreen() {
     };
     console.log("Sharing my negotiation offer...", payload);
     socket.emit("CALL:NEGOTIATION", payload);
-  }, [currentRoom, remoteUserId, socket]);
+  }, [computeRemoteUserId, currentRoom, socket]);
 
-  const handleIncomingNegotiation = useCallback(
-    async (data) => {
-      console.log("Received incoming negotiation offer...", data);
-      if (!data.offer) {
-        console.log("Error: No answer received from the remote user...");
-        return;
-      }
-      const answer = await peer.getAnswer(data.offer);
-      const payload = {
-        ...data,
-        answer,
-        toUserId: remoteUserId,
-      };
-      console.log("Sharing my answer to negotiation offer...", payload);
-      socket.emit("CALL:NEGOTIATION_ANSWER", payload);
-    },
-    [remoteUserId, socket]
-  );
+  const handleIncomingNegotiation = useCallback(async (data) => {
+    console.log("Received incoming negotiation offer...", data);
+    if (!data.offer) {
+      console.log("Error: No answer received from the remote user...");
+      return;
+    }
+    // const answer = await peer.getAnswer(data.offer);
+    // const remoteUserId = computeRemoteUserId();
+    // const payload = {
+    //   ...data,
+    //   answer,
+    //   toUserId: remoteUserId,
+    // };
+    // console.log("Sharing my answer to negotiation offer...", payload);
+    // socket.emit("CALL:NEGOTIATION_ANSWER", payload);
+  }, []);
 
   const handleNegotiationFinish = useCallback(
     async (data) => {
@@ -137,7 +147,7 @@ function OngoingCallScreen() {
         return;
       }
       await peer.setLocalDescription(data.answer);
-      setCurrentRoom(data);
+      // setCurrentRoom(data);
       handleStreamTransmit();
     },
     [handleStreamTransmit]
@@ -190,41 +200,37 @@ function OngoingCallScreen() {
 
   useEffect(() => {
     if (callOngoing || callOutgoing) {
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-        })
-        .then((stream) => {
-          setStream(stream);
-          if (localAudioRef.current) {
-            localAudioRef.current.srcObject = stream;
-          }
-          // stream.getTracks().forEach(track=>)
-        })
-        .catch((err) => {
-          console.log(err);
-          alert("Unable to get device audio!");
-        });
+      startAudioStream();
     } else {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-        setStream(null);
-        setRemoteStreams(null);
-      }
+      stopAudioStream();
+      stream.current = null;
+      setRemoteStreams(null);
     }
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      stopAudioStream();
     };
-  }, [callOngoing, callOutgoing, stream]);
+  }, [callOngoing, callOutgoing, startAudioStream, stopAudioStream]);
 
   if (!callOngoing && !callOutgoing) return null;
   return (
     <div>
-      <audio src={stream} autoPlay />
+      {stream.current ? (
+        <ReactPlayer
+          url={stream.current}
+          muted
+          playing={true}
+          height={0}
+          width={0}
+        />
+      ) : null}
       {remoteStreams ? (
-        <audio src={remoteStreams?.[0]} autoPlay controls />
+        <ReactPlayer
+          url={remoteStreams?.[0]}
+          playing
+          controls
+          height={0}
+          width={0}
+        />
       ) : (
         <div>no remote stream</div>
       )}
