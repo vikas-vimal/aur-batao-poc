@@ -122,22 +122,25 @@ function OngoingCallScreen() {
     socket.emit("CALL:NEGOTIATION", payload);
   }, [computeRemoteUserId, currentRoom, socket]);
 
-  const handleIncomingNegotiation = useCallback(async (data) => {
-    console.log("Received incoming negotiation offer...", data);
-    if (!data.offer) {
-      console.log("Error: No answer received from the remote user...");
-      return;
-    }
-    // const answer = await peer.getAnswer(data.offer);
-    // const remoteUserId = computeRemoteUserId();
-    // const payload = {
-    //   ...data,
-    //   answer,
-    //   toUserId: remoteUserId,
-    // };
-    // console.log("Sharing my answer to negotiation offer...", payload);
-    // socket.emit("CALL:NEGOTIATION_ANSWER", payload);
-  }, []);
+  const handleIncomingNegotiation = useCallback(
+    async (data) => {
+      console.log("Received incoming negotiation offer...", data);
+      if (!data.offer) {
+        console.log("Error: No answer received from the remote user...");
+        return;
+      }
+      const answer = await peer.getAnswer(data.offer);
+      const remoteUserId = computeRemoteUserId();
+      const payload = {
+        ...data,
+        answer,
+        toUserId: remoteUserId,
+      };
+      console.log("Sharing my answer to negotiation offer...", payload);
+      socket.emit("CALL:NEGOTIATION_ANSWER", payload);
+    },
+    [computeRemoteUserId, socket]
+  );
 
   const handleNegotiationFinish = useCallback(
     async (data) => {
