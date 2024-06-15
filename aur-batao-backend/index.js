@@ -14,14 +14,16 @@ const { calcCallBill } = require("./billing");
 const app = express();
 const server = http.createServer(app);
 const io = new SocketServer(server, {
-  cors: true,
+  cors: {
+    origin: "https://aur-batao-poc.netlify.app",
+  },
 });
 
 const userIdToSocketIdMap = new Map();
 
 app.use(
   cors({
-    origin: "*",
+    origin: "https://aur-batao-poc.netlify.app",
   })
 );
 
