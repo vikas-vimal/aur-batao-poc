@@ -100,13 +100,15 @@ function OngoingCallScreen() {
       socket.emit("CALL:LEAVE_ROOM", payload);
       return null;
     });
+    stopAudioStream();
   }, [
-    callOngoing,
-    callOutgoing,
-    socket,
-    auth.user,
     setCallOngoing,
     setCallOutgoing,
+    stopAudioStream,
+    callOngoing,
+    callOutgoing,
+    auth.user,
+    socket,
   ]);
 
   const handleNegotiationNeeded = useCallback(async () => {
