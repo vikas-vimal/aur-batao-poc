@@ -17,7 +17,7 @@ function OngoingCallScreen() {
   } = useSocket();
   const [currentRoom, setCurrentRoom] = useState(null);
   const stream = useRef(null);
-  const [remoteStreams, setRemoteStreams] = useState(null);
+  const remoteStreams = useRef(null);
 
   const computeRemoteUserId = useCallback(() => {
     console.log("Computing remote user id....");
@@ -30,6 +30,7 @@ function OngoingCallScreen() {
 
   const startAudioStream = useCallback(async () => {
     try {
+      console.log("Starting my media stream...");
       const audioStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
       });
@@ -43,6 +44,7 @@ function OngoingCallScreen() {
   }, []);
 
   const stopAudioStream = useCallback(() => {
+    console.log("Stopping my media stream receiver...");
     if (stream.current) {
       stream.current.getTracks().forEach((track) => track.stop());
       stream.current = null;
@@ -160,7 +162,7 @@ function OngoingCallScreen() {
 
   const handleRemoteStream = useCallback((ev) => {
     console.log("Received remote stream", ev.streams);
-    setRemoteStreams(ev.streams);
+    remoteStreams.current = ev.streams;
   }, []);
 
   useEffect(() => {
@@ -186,13 +188,13 @@ function OngoingCallScreen() {
     socket.on("CALL:STARTED", handleCallStarted);
     socket.on("CALL:LEAVE_ROOM_REQUEST", handleLeaveCallRoom);
     socket.on("CALL:ACCEPT_NEGOTIATION", handleIncomingNegotiation);
-    socket.on("CALL:FINISH_NEGOTIATION", handleNegotiationFinish);
+    // socket.on("CALL:FINISH_NEGOTIATION", handleNegotiationFinish);
     return () => {
       socket.off("CALL:ACCEPTED_BY_TARGET", handleCallAccepted);
       socket.off("CALL:STARTED", handleCallStarted);
       socket.off("CALL:LEAVE_ROOM_REQUEST", handleLeaveCallRoom);
       socket.on("CALL:ACCEPT_NEGOTIATION", handleIncomingNegotiation);
-      socket.on("CALL:FINISH_NEGOTIATION", handleNegotiationFinish);
+      // socket.on("CALL:FINISH_NEGOTIATION", handleNegotiationFinish);
     };
   }, [
     handleCallAccepted,
@@ -204,17 +206,16 @@ function OngoingCallScreen() {
   ]);
 
   useEffect(() => {
-    if (callOngoing || callOutgoing) {
-      startAudioStream();
-    } else {
-      stopAudioStream();
-      stream.current = null;
-      setRemoteStreams(null);
-    }
+    // if (callOngoing || callOutgoing) {
+    //   // startAudioStream();
+    // } else {
+    //   stopAudioStream();
+    //   remoteStreams.current = (null);
+    // }
     return () => {
       stopAudioStream();
     };
-  }, [callOngoing, callOutgoing, startAudioStream, stopAudioStream]);
+  }, [stopAudioStream]);
 
   if (!callOngoing && !callOutgoing) return null;
   return (
@@ -230,11 +231,11 @@ function OngoingCallScreen() {
       ) : null}
       {remoteStreams ? (
         <ReactPlayer
-          url={remoteStreams?.[0]}
+          url={remoteStreams}
           playing
           controls
-          height={0}
-          width={0}
+          height={100}
+          width={400}
         />
       ) : (
         <div>no remote stream</div>

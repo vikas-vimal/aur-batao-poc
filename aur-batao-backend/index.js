@@ -11,11 +11,17 @@ const {
 } = require("./rooms");
 const { calcCallBill } = require("./billing");
 
+const ALLOWED_ORIGIN =
+  process.env.NODE_ENV !== "development"
+    ? "https://aur-batao-poc.netlify.app"
+    : "*";
+console.log("ALLOWED_ORIGIN", ALLOWED_ORIGIN, process.env.NODE_ENV);
+
 const app = express();
 const server = http.createServer(app);
 const io = new SocketServer(server, {
   cors: {
-    origin: "https://aur-batao-poc.netlify.app",
+    origin: ALLOWED_ORIGIN,
   },
 });
 
@@ -23,9 +29,18 @@ const userIdToSocketIdMap = new Map();
 
 app.use(
   cors({
-    origin: "https://aur-batao-poc.netlify.app",
+    origin: ALLOWED_ORIGIN,
   })
 );
+
+app.use((req, res, next) => {
+  console.log(
+    `------ ${req.method} ${req.url} (${
+      req.body ? JSON.stringify(req.body) : ""
+    })`
+  );
+  next();
+});
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Hello..." });
@@ -38,8 +53,12 @@ app.get("/users-list", (req, res) => {
 io.on("connection", (socket) => {
   console.log("Socket connected", socket.id);
 
+  socket.onAnyOutgoing((...args) => {
+    console.log("------ OUTPUT RESPONSE FROM SOCKET ------", args);
+  });
+
   socket.on("USER:ONLINE", ({ user }) => {
-    console.log("online user", user);
+    console.log("\n-------- online user", user);
     userIdToSocketIdMap.set(user.id, socket.id);
     console.log(
       "uid to sid",
@@ -48,7 +67,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("USER:CALLING", ({ fromUser, fromUserId, targetUserId, offer }) => {
-    console.log("Received incoming call", { fromUserId, targetUserId, offer });
+    console.log("\n-------- Received incoming call", {
+      fromUserId,
+      targetUserId,
+      offer,
+    });
     const targetUser = UsersDB.get(targetUserId);
     const sourceUser = UsersDB.get(fromUserId);
     console.log({ targetUser, sourceUser });
@@ -77,7 +100,7 @@ io.on("connection", (socket) => {
   socket.on("CALL:ACCEPTED", (data) => {
     const { roomId, fromUser, targetUser, offer, answer, createdAt, status } =
       data;
-    console.log("Received call accepted by target user", {
+    console.log("\n-------- Received call accepted by target user", {
       fromUser,
       targetUser,
       answer,
@@ -113,7 +136,7 @@ io.on("connection", (socket) => {
   socket.on("CALL:NEGOTIATION", (data) => {
     const { roomId, fromUser, targetUser, offer, toUserId, createdAt, status } =
       data;
-    console.log("Received call negotiation with offer...", {
+    console.log("\n-------- Received call negotiation with offer...", {
       toUserId,
       offer,
     });
@@ -146,7 +169,7 @@ io.on("connection", (socket) => {
       createdAt,
       status,
     } = data;
-    console.log("Received answer for negotiation...", {
+    console.log("\n-------- Received answer for negotiation...", {
       toUserId,
       answer,
     });
@@ -171,7 +194,7 @@ io.on("connection", (socket) => {
 
   socket.on("CALL:REJECT", (data) => {
     const { roomId, fromUser, targetUser, offer, createdAt, status } = data;
-    console.log("Received call rejected by target user", {
+    console.log("\n-------- Received call rejected by target user", {
       fromUser,
       targetUser,
     });
@@ -192,7 +215,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("CALL:CANCEL", (data) => {
-    console.log("Received call cancel event", data);
+    console.log("\n-------- Received call cancel event", data);
     if (!data?.targetUserId || !data?.fromUser?.id) {
       console.log("Invalid call object to end...");
       return;
@@ -222,7 +245,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("CALL:LEAVE_ROOM", (data) => {
-    console.log("Received leave call room event", data);
+    console.log("\n-------- Received leave call room event", data);
     const { roomId, fromUser, targetUser, offer, createdAt, status } = data;
     if (!roomId) {
       console.log("Invalid leave room id provided...");
@@ -246,7 +269,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("CALL:END", (data) => {
-    console.log("Received call end event", data);
+    console.log("\n-------- Received call end event", data);
     const { roomId, fromUser, targetUser, offer, createdAt, status } = data;
     if (!targetUser?.id || !fromUser?.id) {
       console.log("Invalid call object to end...");
