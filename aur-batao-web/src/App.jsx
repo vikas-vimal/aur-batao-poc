@@ -13,6 +13,7 @@ function App() {
   const [currentCall, setCurrentCall] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [callEndedMessage, setCallEndedMessage] = useState(null);
+  const [outgoingCall, setOutgoingCall] = useState(null);
 
   const fetchUsers = useCallback(async () => {
     const response = await fetch(`${SERVER_URL}/users`);
@@ -42,6 +43,7 @@ function App() {
 
   const handleCall = (calleeId) => {
     socket.emit("call-user", { callerId: myId, calleeId });
+    setOutgoingCall({ calleeId });
   };
 
   const acceptCall = () => {
@@ -59,6 +61,9 @@ function App() {
     if (currentCall) {
       socket.emit("call-ended", { callerId: myId });
       setCurrentCall(null);
+    }
+    if (outgoingCall) {
+      setOutgoingCall(null);
     }
   };
 
@@ -142,8 +147,9 @@ function App() {
       {currentCall && (
         <div>
           <h2>Ongoing Call</h2>
-          <p>Calling: {currentCall.calleeId}</p>
+          <p>Connected to: {currentCall.calleeId}</p>
           <button onClick={endCall}>End Call</button>
+          <button onClick={() => setIncomingCall(null)}>Reject</button>
         </div>
       )}
 
@@ -152,6 +158,15 @@ function App() {
           <h2>Incoming Call</h2>
           <p>From: {incomingCall.callerId}</p>
           <button onClick={acceptCall}>Accept</button>
+        </div>
+      )}
+
+      {outgoingCall && (
+        <div>
+          <h2>Outgoing Call</h2>
+          <p>Calling: {outgoingCall.calleeId}</p>
+          <p>Waiting for answer...</p>
+          <button onClick={endCall}>Cancel Call</button>
         </div>
       )}
 
@@ -169,7 +184,7 @@ function App() {
             {user.name} (ID: {user.id})
             <button
               onClick={() => handleCall(user.id)}
-              disabled={currentCall !== null}
+              disabled={currentCall !== null || outgoingCall !== null}
             >
               Call
             </button>
