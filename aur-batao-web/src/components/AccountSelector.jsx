@@ -1,7 +1,7 @@
 import { useAuth } from "../hooks/useAuth";
 
 // eslint-disable-next-line react/prop-types
-function UserSelector({ usersList = [] }) {
+function AccountSelector({ usersList = [] }) {
   const auth = useAuth();
 
   return (
@@ -21,4 +21,4 @@ function UserSelector({ usersList = [] }) {
   );
 }
 
-export default UserSelector;
+export default AccountSelector;

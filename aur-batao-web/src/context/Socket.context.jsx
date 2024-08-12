@@ -74,6 +74,7 @@ export const SocketProvider = ({ children }) => {
     connectedHandler,
     disconnectHandler,
     callCancelledHandler,
+    handleAccountUpdate,
   ]);
 
   useEffect(() => {

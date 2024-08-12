@@ -1,15 +1,24 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-import IncomingCallScreen from "./IncomingCall";
-import OutgoingCallScreen from "./OutgoingCall";
-import OngoingCallScreen from "./OngoingCallScreen";
+import React, { useCallback, useEffect, useRef } from "react";
 
 function Room() {
+  const myAudio = useRef(null);
+
+  const createPeer = useCallback((targetUserId, myCallerId, stream) => {}, []);
+
+  useEffect(() => {
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: true,
+      })
+      .then((stream) => {
+        myAudio.current.srcObject = stream;
+      });
+  }, []);
+
   return (
     <div>
-      <IncomingCallScreen />
-      <OutgoingCallScreen />
-      <OngoingCallScreen />
+      <audio ref={myAudio} autoPlay hidden muted />
     </div>
   );
 }

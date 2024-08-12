@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CallContacts from "./components/CallContacts";
-import UserSelector from "./components/UserSelector";
+import AccountSelector from "./components/AccountSelector";
 import { useAuth } from "./hooks/useAuth";
 import { useSocket } from "./hooks/useSocket";
 import { API_URL } from "../env";
@@ -23,21 +23,10 @@ function App() {
     fetchUsersList();
   }, [fetchUsersList]);
 
-  const handleUserJoined = useCallback((data) => {
-    console.log("USER JOINED ROOM", data);
-  }, []);
-
-  useEffect(() => {
-    socket.on("USER:JOINED", handleUserJoined);
-    return () => {
-      socket.off("USER:JOINED", handleUserJoined);
-    };
-  }, [handleUserJoined, socket]);
-
   return (
     <div style={{ textAlign: "center" }}>
       <div>Socket status: {socketStatus ? "Connected" : "Not Connected"}</div>
-      <UserSelector usersList={usersList} />
+      <AccountSelector usersList={usersList} />
       <div>Current Profile: {auth.user.name}</div>
       <div>Available Credits: {auth.user.credits}</div>
       <CallContacts usersList={usersList} />
